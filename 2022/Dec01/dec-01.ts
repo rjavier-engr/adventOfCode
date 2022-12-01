@@ -24,11 +24,34 @@ const INPUT_PATH = path.normalize(
 export class ElfCalories implements SolutionClass {
 
   /**
-   * @description Runs the solution.
-   * @return The total of calories held by the elf holding the most calories
-   * in their food bag. 
+   * @description The number of parts in this solution.
    */
-  run(): void {
+  readonly numOfParts: number = 2;
+
+  /**
+   * @description Runs the solution.
+   * Part 1: The total of calories held by the elf holding the most calories
+   * in their food bag.
+   * Part 2: ?
+   * @param part The part of the solution to run.
+   */
+  run(part?: number): void {
+    const partNum = part ?? 1;
+    switch (partNum) {
+      case 1: {
+        this.part1();
+        break;
+      }
+      default: {
+        throw new Error(`This solution has no part ${partNum}.`);
+      }
+    }
+  }
+
+  /**
+   * @description Implementation for part 1.
+   */
+  private part1(): void {
     // Enforce no newlines in the start and double newline at the end.
     const inputStr =
       fs.readFileSync(INPUT_PATH, {encoding: 'utf8'}).trim() + '\n\n';

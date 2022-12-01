@@ -22,10 +22,12 @@ function help(): void {
     '       npm start [command [args]]\n',
     '\n',
     'Commands:\n',
-    '\trun DATE\n',
+    '\trun DATE PART\n',
     '\t\tExecutes the solution specified by the given YYYY-MM-DD date.\n',
     '\t\tFor example, using "run 2022-12-01" runs the solution under\n',
     '\t\t./2022/Dec01.\n',
+    '\t\tPART specifies the subsection of the solution to run, given by\n',
+    '\t\tthe specified part number (starting at 1).\n',
     '\tlist\n',
     '\t\tLists the full set of known solution keys available.\n',
     '\n',
@@ -39,25 +41,36 @@ function help(): void {
  * execute.
  * @param dateStr The YYYY-MM-DD string specifying which day's solution to
  * execute.
+ * @param partNum The part to run.
  */
-function handleRun(dateStr: string): void {
+function handleRun(dateStr: string, partNum: number): void {
   if (!SOLUTION_MAP.has(dateStr)) {
     throw new Error(`No known solution for date '${dateStr}'. ` +
       'Use the "list" command to see all known solution keys.');
   }
   const solution: SolutionClass =
     SOLUTION_MAP.get(dateStr) as SolutionClass;
-  solution.run();
+  if (solution.numOfParts > 1 && (partNum > solution.numOfParts ||
+    partNum < 1)) {
+    throw new Error(
+      `Expected a part number from 1 to ${solution.numOfParts}, got ${
+        partNum}`);
+  }
+  solution.run(partNum);
 }
 
 /** BEGIN main */
 switch (command) {
   case 'run': {
-    if (args.length !== 1) {
+    const dateStr = args[0];
+    const parsedNum = parseInt(args[1]);
+    if (args.length < 2) {
       throw new Error(
-        `Command "run" expects 1 argument, got ${args.length}`);
+        `Command "run" expects 2 arguments, got ${args.length}.`);
+    } else if (Number.isNaN(parsedNum)) {
+      throw new Error(`Invalid part number '${args[1]}'`);
     }
-    handleRun(args[0]);
+    handleRun(dateStr, parsedNum);
     break;
   }
   case 'list': {
