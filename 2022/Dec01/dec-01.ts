@@ -42,6 +42,10 @@ export class ElfCalories implements SolutionClass {
         this.part1();
         break;
       }
+      case 2: {
+        this.part2();
+        break;
+      }
       default: {
         throw new Error(`This solution has no part ${partNum}.`);
       }
@@ -89,5 +93,68 @@ export class ElfCalories implements SolutionClass {
     }
 
     console.log('Largest:', largestCalories);
+  }
+
+  /**
+   * @description Implementation for part 2.
+   */
+  private part2(): void {
+    // Enforce no newlines in the start and double newline at the end.
+    const inputStr =
+      fs.readFileSync(INPUT_PATH, {encoding: 'utf8'}).trim() + '\n\n';
+    
+    // Tracks when we get a newline. Useful for knowing when we get a break
+    // between elf calorie lists or still in the list.
+    let prevCharWasNewline = false;
+    const LARGEST = 2;  // index of largest calorie.
+    const SECOND = 1;  // index of second-largest calorie.
+    const THIRD = 0;  // index of third-largest calorie.
+    let threeLargestCalories = [0, 0, 0]; // index2=largest, index0=smallest 
+    let currentNumberStr = ''; // the current number's chars.
+    let runningTotal = 0; // the current running total for this elf's list.
+    // Let's go char by char to be the fastest possible.
+    for(let i = 0; i < inputStr.length; i++) {
+      const char = inputStr[i];
+      if (char === '\n') {
+        // When we get to a break between elf calorie lists.
+        if (prevCharWasNewline) {
+          // if (runningTotal >= largestCalories) {  // if multiple are equal
+          //   largestCalories = runningTotal;
+          // }
+          
+          // Evaluate where to put the new running total
+          if (runningTotal >= threeLargestCalories[LARGEST]) {
+            threeLargestCalories.shift(); // remove current third-largest
+            threeLargestCalories.push(runningTotal);  // add new largest
+          } else if (runningTotal >= threeLargestCalories[SECOND]) {
+            threeLargestCalories.shift(); // remove current third-largest
+            // add new second-largest between largest & third-largest
+            threeLargestCalories.splice(SECOND, 0, runningTotal);
+          } else if (runningTotal > threeLargestCalories[THIRD]) {
+            threeLargestCalories[THIRD] = runningTotal;
+          }
+
+          // Reset, we'll start a new list next.
+          prevCharWasNewline = false;
+          runningTotal = 0;
+        } else {
+          // We've reached the end of one number in the list.
+          prevCharWasNewline = true;
+          runningTotal += parseInt(currentNumberStr);
+          currentNumberStr = '';  // get ready for next number.
+        }
+      } else {
+        // When we get a char, add it the number string.
+        currentNumberStr += char;
+        prevCharWasNewline = false;
+      }
+    }
+
+    console.log('Sum of the three Largest:', threeLargestCalories.reduce(
+      (prev: number, current: number) => {
+        return prev + current;
+      },
+      /* initialValue= */ 0
+    ));
   }
 }
