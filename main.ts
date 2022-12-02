@@ -8,8 +8,10 @@ import { SolutionClass } from './util/SolutionClass.interface';
 
 // Solution imports
 import { ElfCalories } from './2022/Dec01/dec-01';
+import { ElfRockPaperScissors } from './2022/Dec02/dec-02';
 
 const SOLUTION_MAP = (new Map<string, SolutionClass>())
+  .set('2022-12-02', new ElfRockPaperScissors())
   .set('2022-12-01', new ElfCalories());
 const [command, ...args] = process.argv.slice(2);
 
