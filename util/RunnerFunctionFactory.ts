@@ -18,7 +18,9 @@ export class RunnerFunctionFactory{
    * references.
    * @param ref Reference to the SolutionClass instance.
    * @param first Reference to the part 1 PartFunction of a SolutionClass.
-   * @param others Additional PartFunctions of the SolutionClass to run.
+   * @param others Additional PartFunctions of the SolutionClass to run, in
+   * natural order, i.e the first "others" is part 2, the second is part 3,
+   * and so on.
    */
   static build(ref: SolutionClass, first: PartFunction, ...others: PartFunction[]):
     RunnerFunction {
