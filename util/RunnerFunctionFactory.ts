@@ -1,4 +1,4 @@
-import { SolutionClass } from "./SolutionClass.interface";
+import { SolutionClass } from './SolutionClass.interface';
 
 /**
  * @file
@@ -12,7 +12,7 @@ export type PartFunction = () => void;
  * @description Defines a runner function factory that builds a runner
  * function to run parts of a SolutionClass.
  */
-export class RunnerFunctionFactory{
+export class RunnerFunctionFactory {
   /**
    * @description Builds the runner for the given SolutionClass PartFunction
    * references.
@@ -22,8 +22,11 @@ export class RunnerFunctionFactory{
    * natural order, i.e the first "others" is part 2, the second is part 3,
    * and so on.
    */
-  static build(ref: SolutionClass, first: PartFunction, ...others: PartFunction[]):
-    RunnerFunction {
+  static build(
+    ref: SolutionClass,
+    first: PartFunction,
+    ...others: PartFunction[]
+  ): RunnerFunction {
     const parts = [first].concat(others);
     if (parts.length < 1) {
       throw new Error('No PartFunction reference(s) given.');

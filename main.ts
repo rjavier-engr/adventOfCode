@@ -11,7 +11,7 @@ import { ElfCalories } from './2022/Dec01/dec-01';
 import { ElfRockPaperScissors } from './2022/Dec02/dec-02';
 import { ElfRucksackReorganization } from './2022/Dec03/dec-03';
 
-const SOLUTION_MAP = (new Map<string, SolutionClass>())
+const SOLUTION_MAP = new Map<string, SolutionClass>()
   .set('2022-12-03', new ElfRucksackReorganization())
   .set('2022-12-02', new ElfRockPaperScissors())
   .set('2022-12-01', new ElfCalories());
@@ -36,7 +36,7 @@ function help(): void {
     '\t\tLists the full set of known solution keys available.\n',
     '\n',
     '\thelp\n',
-    '\t\tPrints the help prompt.\n',
+    '\t\tPrints the help prompt.\n'
   );
 }
 
@@ -49,16 +49,21 @@ function help(): void {
  */
 function handleRun(dateStr: string, partNum: number): void {
   if (!SOLUTION_MAP.has(dateStr)) {
-    throw new Error(`No known solution for date '${dateStr}'. ` +
-      'Use the "list" command to see all known solution keys.');
-  }
-  const solution: SolutionClass =
-    SOLUTION_MAP.get(dateStr) as SolutionClass;
-  if (solution.numOfParts > 1 && (partNum > solution.numOfParts ||
-    partNum < 1)) {
     throw new Error(
-      `Expected a part number from 1 to ${solution.numOfParts}, got ${
-        partNum}`);
+      `No known solution for date '${dateStr}'. ` +
+        'Use the "list" command to see all known solution keys.'
+    );
+  }
+  const solution: SolutionClass = SOLUTION_MAP.get(
+    dateStr
+  ) as SolutionClass;
+  if (
+    solution.numOfParts > 1 &&
+    (partNum > solution.numOfParts || partNum < 1)
+  ) {
+    throw new Error(
+      `Expected a part number from 1 to ${solution.numOfParts}, got ${partNum}`
+    );
   }
   solution.run(partNum);
 }
@@ -70,7 +75,8 @@ switch (command) {
     const parsedNum = parseInt(args[1]);
     if (args.length < 2) {
       throw new Error(
-        `Command "run" expects 2 arguments, got ${args.length}.`);
+        `Command "run" expects 2 arguments, got ${args.length}.`
+      );
     } else if (Number.isNaN(parsedNum)) {
       throw new Error(`Invalid part number '${args[1]}'`);
     }

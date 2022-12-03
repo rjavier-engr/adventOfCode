@@ -18,5 +18,16 @@
   "license": "MIT",
   "dependencies": {
     "@types/node": "^18.11.10"
+  },
+  "prettier": {
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "semi": true,
+    "bracketSpacing": true,
+    "arrowParens": "avoid",
+    "useTabs": false,
+    "parser": "typescript",
+    "printWidth": 70,
+    "singleQuote": true
   }
 }
