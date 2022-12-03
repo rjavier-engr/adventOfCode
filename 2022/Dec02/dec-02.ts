@@ -5,6 +5,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { RunnerFunction, RunnerFunctionFactory } from '../../util/RunnerFunctionFactory';
 
 import { SolutionClass } from '../../util/SolutionClass.interface';
 
@@ -35,25 +36,9 @@ enum OutcomeType {
  * scissors puzzle.
  */
 export class ElfRockPaperScissors implements SolutionClass {
-
   readonly numOfParts: number = 2;
-
-  run(part?: number): void {
-    const partNum = part ?? 1;
-    switch (partNum) {
-      case 1: {
-        this.part1();
-        break;
-      }
-      case 2: {
-        this.part2();
-        break;
-      }
-      default: {
-        throw new Error(`This solution has no part ${partNum}.`);
-      }
-    }
-  }
+  run: RunnerFunction =
+    RunnerFunctionFactory.build(this, this.part1, this.part2);
 
   /**
    * @description Legend mapping round outcomes to their point value.
@@ -155,7 +140,7 @@ export class ElfRockPaperScissors implements SolutionClass {
   /**
    * @description Implementation for part 1.
    */
-  private part1(): void {
+  protected part1(): void {
     // Enforce no newlines at the start and a newline at the end.
     const inputStr = fs.readFileSync(INPUT_PATH, {encoding: 'utf8'}).trim()
       + '\n';
@@ -223,11 +208,6 @@ export class ElfRockPaperScissors implements SolutionClass {
         // Here we will have just amassed a single line comprising a round.
         // Determine your current running score based on desired outcome.
         yourPlay = this.determineCorrectPlay(rivalPlay, desiredOutcome);
-
-        // TODO(me): debug
-        console.log('rival:', PlayType[rivalPlay], '\tdesiredOutcome:',
-          OutcomeType[desiredOutcome], '\tcorrectPlay:',
-          PlayType[yourPlay]);
 
         // Tally up points.
         const pointsFromPlay = this.PLAY_POINT_MAP.get(yourPlay) as number;

@@ -5,6 +5,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { RunnerFunction, RunnerFunctionFactory } from '../../util/RunnerFunctionFactory';
 
 import { SolutionClass } from '../../util/SolutionClass.interface';
 
@@ -22,35 +23,9 @@ const INPUT_PATH = path.normalize(
  * @description Class that runs the logic to solve the elf calorie problem.
  */
 export class ElfCalories implements SolutionClass {
-
-  /**
-   * @description The number of parts in this solution.
-   */
   readonly numOfParts: number = 2;
-
-  /**
-   * @description Runs the solution.
-   * Part 1: The total of calories held by the elf holding the most calories
-   * in their food bag.
-   * Part 2: ?
-   * @param part The part of the solution to run.
-   */
-  run(part?: number): void {
-    const partNum = part ?? 1;
-    switch (partNum) {
-      case 1: {
-        this.part1();
-        break;
-      }
-      case 2: {
-        this.part2();
-        break;
-      }
-      default: {
-        throw new Error(`This solution has no part ${partNum}.`);
-      }
-    }
-  }
+  run: RunnerFunction =
+    RunnerFunctionFactory.build(this, this.part1, this.part2);
 
   /**
    * @description Implementation for part 1.
