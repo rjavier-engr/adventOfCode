@@ -12,8 +12,10 @@ import { ElfRockPaperScissors } from './2022/Dec02/dec-02';
 import { ElfRucksackReorganization } from './2022/Dec03/dec-03';
 import { ElfCampCleanup } from './2022/Dec04/dec-04';
 import { ElfSupplyStacks } from './2022/Dec05/dec-05';
+import { ElfTuningTrouble } from './2022/Dec06/dec-06';
 
 const SOLUTION_MAP = new Map<string, SolutionClass>()
+  .set('2022-12-06', new ElfTuningTrouble())
   .set('2022-12-05', new ElfSupplyStacks())
   .set('2022-12-04', new ElfCampCleanup())
   .set('2022-12-03', new ElfRucksackReorganization())
