@@ -213,6 +213,35 @@ export class FileSystem {
   }
 
   /**
+   * @description Determines the current size of the filesystem at runtime.
+   * @param start The foler to acquire the disk space of.
+   * @return The total amount of disk space units consumed by the filesystem
+   * at the current point in time.
+   */
+  calculateDiskUsage(start: Folder): number {
+    // Similarly to the `print()` function, we will be using an iterative
+    // variation of the DFS approach.
+    let runningTotal = 0;
+    const stack: (File | Folder)[] = [start];
+    while (stack.length > 0) {
+      const top = stack[stack.length - 1];
+      if (top instanceof Folder) {
+        // Remove folder from stack, then lay its contents on top.
+        const folder = stack.pop() as Folder;
+        folder.content.forEach((fileOrFolder: File | Folder) => {
+          stack.push(fileOrFolder);
+        });
+      } else if (top instanceof File) {
+        // Add its size to the total, then remove from queue since we no
+        // longer need it for the calculation.
+        runningTotal += (top as File).size;
+        stack.pop();
+      }
+    }
+    return runningTotal;
+  }
+
+  /**
    * @description Prints the current filesystem.
    */
   print(): void {
@@ -405,10 +434,16 @@ export class ElfNoSpaceOnDevice implements SolutionClass {
    */
   private part2(): void {
     const total = 0;
-    // TODO(me): First we must grab the current total file system usage.
+
+    // First we must grab the current total file system usage.
+    const currentSpaceUsed = this.filesystem.calculateDiskUsage(
+      this.filesystem.getRoot()
+    );
+    console.log(`Current disk space used: ${currentSpaceUsed}`);
+
     // TODO(me): With the total, we now know the minimum amount of disk
     // space we need to free to enable to device update. Find one such
-    // folder that is as close to that as possible. 
+    // folder that is as close to that as possible.
     console.log(
       `Size of smallest folder that frees up at least 30,000,000 units ` +
         `of disk space if deleted:\n${total}`
