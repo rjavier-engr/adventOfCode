@@ -16,10 +16,11 @@ import { SolutionClass } from '../../util/SolutionClass.interface';
 const INPUT_PATH = path.normalize(
   `${__dirname}/../../../inputs/2022/Dec07/input.txt`
 );
-// const TEST_INPUT_PATH = path.normalize(
-//   `${__dirname}/../../../inputs/2022/Dec07/test.txt`
-// );
+const TEST_INPUT_PATH = path.normalize(
+  `${__dirname}/../../../inputs/2022/Dec07/test.txt`
+);
 const FILESYSTEM_MAX_SIZE = 70000000; // 70 Million.
+const DEVICE_UPDATE_REQUIRED_SPACE = 30000000; // 30 Million.
 
 /** @description Class used to track running total across all recursions. */
 class TotalTracker {
@@ -37,6 +38,52 @@ class TotalTracker {
    */
   add(amount: number): void {
     this.runningTotal += amount;
+  }
+}
+
+/**
+ * @description Class used to track the smallest folder size closest to a
+ * given target without falling below the target.
+ */
+class ClosestTargetTracker {
+  /**
+   * @description Tracks the size of the folder closest to the target size
+   * without falling below it.
+   */
+  private currentClosest: number;
+
+  /** @description The target folder size to be as close to. */
+  private readonly target: number;
+
+  /**
+   * @ctor
+   * @param target The target file size.
+   * @param max The size to start from. Generally the size of the filesystem
+   * root, which is the largest size that can be attained with the current
+   * file system state.
+   */
+  constructor(target: number, max: number) {
+    this.target = target;
+    this.currentClosest = max;
+  }
+
+  /**
+   * @description Getter for the target.
+   */
+  getCurrentClosest(): number {
+    return this.currentClosest;
+  }
+
+  /**
+   * @description Updates the current closest with the new value if it is
+   * closer to the target than the currently tracked closest value and does
+   * not go below the target.
+   * @param size The size to compare and possibly use.
+   */
+  updateIfCloser(size: number): void {
+    if (size < this.currentClosest && size >= this.target) {
+      this.currentClosest = size;
+    }
   }
 }
 
@@ -344,7 +391,7 @@ export class FileSystem {
  * @param folder The current folder to check.
  * @param tracker A container to track the running total at the end of each
  * directory size calculation stage.
- * @return total The total size of all things in this folder.
+ * @return The total size of all things in this folder including subfolders.
  */
 function getSizeSumFrom100kMaxDirsRecurse(
   folder: Folder,
@@ -374,7 +421,7 @@ function getSizeSumFrom100kMaxDirsRecurse(
  * @description Helper to calculate the total size of all directories (even
  * including previously-counted subdirectories) that are no more than 100k
  * in size.
- * @param root The filesystem root to start from
+ * @param root The filesystem root to start from.
  * @return The total size of all those directories combined (even including
  * previously-counted subdirectories).
  */
@@ -384,6 +431,72 @@ function getSizeSumFrom100kMaxDirs(root: Folder): number {
   const totalTracker: TotalTracker = new TotalTracker();
   getSizeSumFrom100kMaxDirsRecurse(root, totalTracker);
   return totalTracker.getCurrentTotal();
+}
+
+/**
+ * @description Recursively called function to DFS down the filesystem tree.
+ * @param folder The current folder to check.
+ * @param tracker A container to track the running smallest size of folder
+ * reaching a specified target.
+ * @return The total size of all things in this folder including subfolders.
+ */
+function getSizeOfSmallestFolderToDeleteRecurse(
+  folder: Folder,
+  tracker: ClosestTargetTracker,
+  depth: number // for debugging.
+): number {
+  let sizeAtThisStage = 0;
+
+  // // TODO(me): remove
+  // let padding = '';
+  // for (let i = 0; i < depth; i++) {
+  //   padding += '  ';
+  // }
+
+  folder.content.forEach((fileOrFolder: File | Folder) => {
+    if (fileOrFolder instanceof Folder) {
+      // // TODO(me): remove
+      // console.log(`${padding}- ${fileOrFolder.name} (dir)`);
+
+      const folderSize = getSizeOfSmallestFolderToDeleteRecurse(
+        fileOrFolder as Folder,
+        tracker,
+        depth + 1 // for debugging.
+      );
+      sizeAtThisStage += folderSize;
+
+      // // TODO(me): remove
+      // console.log(`${padding}(dir size: ${folderSize});`);
+    } else if (fileOrFolder instanceof File) {
+      sizeAtThisStage += (fileOrFolder as File).size;
+      // // TODO(me): remove
+      // console.log(
+      //   `${padding}- ${fileOrFolder.name} (file, ${fileOrFolder.size})`
+      // );
+    }
+  });
+  tracker.updateIfCloser(sizeAtThisStage);
+  return sizeAtThisStage;
+}
+
+/**
+ * @description Helper to determine what is the smallest single folder we
+ * can delete to free up enough disk space for the update.
+ * @param root The filesystem root to start from.
+ * @param targetTracker The ClosestTargetTracker instance used to track the
+ * smallest target.
+ * @return The size of the smallest folder we can delete to meet the target.
+ */
+function getSizeOfSmallestFolderToDelete(
+  root: Folder,
+  target: ClosestTargetTracker
+): number {
+  getSizeOfSmallestFolderToDeleteRecurse(
+    root,
+    target,
+    0 // for debugging.
+  );
+  return target.getCurrentClosest();
 }
 
 /**
@@ -433,20 +546,46 @@ export class ElfNoSpaceOnDevice implements SolutionClass {
    * @description Implementation for part 2.
    */
   private part2(): void {
-    const total = 0;
-
     // First we must grab the current total file system usage.
     const currentSpaceUsed = this.filesystem.calculateDiskUsage(
       this.filesystem.getRoot()
     );
-    console.log(`Current disk space used: ${currentSpaceUsed}`);
+    const remainingDiskSpace = FILESYSTEM_MAX_SIZE - currentSpaceUsed;
+    const sufficientUpdateSpace =
+      remainingDiskSpace >= DEVICE_UPDATE_REQUIRED_SPACE;
+    const minimumSpaceToFree = sufficientUpdateSpace
+      ? 0
+      : DEVICE_UPDATE_REQUIRED_SPACE - remainingDiskSpace;
+    console.log(
+      `Current disk space used: ${currentSpaceUsed}/${FILESYSTEM_MAX_SIZE}`
+    );
+    console.log(`Remaining disk space: ${remainingDiskSpace}`);
+    console.log(
+      `We ${
+        sufficientUpdateSpace ? '' : 'do not '
+      }have enough disk ` +
+        `space for the update (${DEVICE_UPDATE_REQUIRED_SPACE} needed).`
+    );
+    if (!sufficientUpdateSpace) {
+      console.log(
+        `We need to free up at least ${minimumSpaceToFree} more disk space.`
+      );
+    }
 
     // TODO(me): With the total, we now know the minimum amount of disk
     // space we need to free to enable to device update. Find one such
     // folder that is as close to that as possible.
+    const closestTracker = new ClosestTargetTracker(
+      minimumSpaceToFree,
+      currentSpaceUsed
+    );
+    const smallest = getSizeOfSmallestFolderToDelete(
+      this.filesystem.getRoot(),
+      closestTracker
+    );
     console.log(
       `Size of smallest folder that frees up at least 30,000,000 units ` +
-        `of disk space if deleted:\n${total}`
+        `of disk space if deleted:\n${smallest}`
     );
   }
 }
