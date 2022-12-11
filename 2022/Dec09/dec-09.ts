@@ -15,8 +15,6 @@ import { SolutionClass } from '../../util/SolutionClass.interface';
 /** @description Location of input. */
 const DEBUG_MODE = false;
 const filename = 'input.txt';
-// const filename = 'test.txt';
-// const filename = 'test_long_line.txt';
 const INPUT_PATH = path.normalize(
   `${__dirname}/../../../inputs/2022/Dec09/${filename}`
 );
@@ -42,7 +40,7 @@ Object.freeze(DIRECTION_CHAR_MAP);
 
 /**
  * @description Class that represents a vector (i.e. a direction and
- * magnitude), used to specify movements within the terrain grid.
+ * magnitude), used to specify movements within the moving rope grid.
  */
 class Vector {
   /** @description Direction of the movement. */
@@ -159,19 +157,27 @@ function getDistance(
 const START_POS: Coordinates = new Coordinates(0, 0);
 
 /**
- * @description Class representing a "grid" within which the Rope's head and
- * tail move.
+ * @description Class representing the rope whose nodes, from head to tail,
+ * can move.
  */
-class ExpandingTerrain {
+class MovingRope {
   /**
-   * @description Set of json strings representing coordinates that the
-   * tail has visited.
+   * @description Sets of json strings representing coordinates that the
+   * non-head nodes have visited.
    */
-  private readonly tailVisits = new Set<string>();
+  private readonly visits: Set<string>[] = [];
 
-  /** @description Keeps track of head and tail current positions. */
-  private readonly headPos: Coordinates = new Coordinates(0,0);
-  private readonly tailPos: Coordinates = new Coordinates(0,0);
+  /** @description Reference to the head node's current position. */
+  private readonly head: Coordinates = new Coordinates(0, 0);
+
+  /** @description Reference to the tail node's current position. */
+  private readonly tail: Coordinates;
+
+  /**
+   * @description List of references to each non-head node's current
+   * positions.
+   */
+  private readonly rope: Coordinates[] = [];
 
   /**
    * @description Tracks the farthest distances visited in the "grid". Used
@@ -184,12 +190,25 @@ class ExpandingTerrain {
   private yMax: number = 0;
   private yMin: number = 0;
 
-  /** @ctor */
-  constructor() {
-    // We assume the grid starts with a single point (0,0) from which all
-    // three key points (start, HEAD and TAIL) begin. Tail visit history is
-    // also initialized to this point as well.
-    this.tailVisits.add(getCoordinatesJson(this.tailPos));
+  /**
+   * @ctor
+   * @param nodeCount The number of nodes (i.e. knots) for this rope,
+   * excluding the head.
+   */
+  constructor(nodeCount: number) {
+    // We assume the nodes start from a single point (0,0), from which they
+    // all overlap.
+    for (let i = 0; i < nodeCount; i++) {
+      const nonHeadNode = new Coordinates(0, 0);
+      const nodeVisits = new Set<string>().add(
+        getCoordinatesJson(nonHeadNode)
+      );
+
+      // Node visit history is also initialized to this point as well.
+      this.rope.push(nonHeadNode);
+      this.visits.push(nodeVisits);
+    }
+    this.tail = this.rope[this.rope.length - 1];
   }
 
   /**
@@ -208,74 +227,104 @@ class ExpandingTerrain {
       // Move head.
       switch (move.direction) {
         case Direction.UP: {
-          this.headPos.setX(this.headPos.getX());
-          this.headPos.setY(this.headPos.getY() + 1);
+          this.head.setX(this.head.getX());
+          this.head.setY(this.head.getY() + 1);
           break;
         }
         case Direction.DOWN: {
-          this.headPos.setX(this.headPos.getX());
-          this.headPos.setY(this.headPos.getY() - 1);
+          this.head.setX(this.head.getX());
+          this.head.setY(this.head.getY() - 1);
           break;
         }
         case Direction.LEFT: {
-          this.headPos.setX(this.headPos.getX() - 1);
-          this.headPos.setY(this.headPos.getY());
+          this.head.setX(this.head.getX() - 1);
+          this.head.setY(this.head.getY());
           break;
         }
         case Direction.RIGHT: {
-          this.headPos.setX(this.headPos.getX() + 1);
-          this.headPos.setY(this.headPos.getY());
+          this.head.setX(this.head.getX() + 1);
+          this.head.setY(this.head.getY());
           break;
         }
       }
 
-      // Next, check whether we need to move tail as well.
-      const distance = getDistance(this.headPos, this.tailPos);
-      const isAdjacentToHead = Math.floor(distance) <= 1; // floor in diags.
-      if (!isAdjacentToHead) {
-        // Move tail in x-direction.
-        let newTailX = this.tailPos.getX();
-        let newTailY = this.tailPos.getY();
-        if (this.tailPos.getX() < this.headPos.getX()) {
-          newTailX++;
-        } else if (this.tailPos.getX() > this.headPos.getX()) {
-          newTailX--;
-        }
+      // Next, check whether we need to move the next node as well.
+      let headingNode = this.head;
+      this.rope.forEach((node: Coordinates, index: number) => {
+        this.evaluateMovement(headingNode, node, this.visits[index]);
+        headingNode = node; // for next run, set current node as next head.
+      });
+    }
+  }
 
-        // Move tail in y-direction.
-        if (this.tailPos.getY() < this.headPos.getY()) {
-          newTailY++;
-        } else if (this.tailPos.getY() > this.headPos.getY()) {
-          newTailY--;
-        }
-        this.tailPos.set(newTailX, newTailY);
+  /**
+   * @description Evaluates and moves a node given its parent's position.
+   * @param parent Reference to the head of the given node to evaluate.
+   * @param node Reference to the node to evaluate.
+   * @param visits Reference to the visit history of the node to evaluate.
+   */
+  evaluateMovement(
+    parent: Coordinates,
+    node: Coordinates,
+    visits: Set<string>
+  ): void {
+    const distance = getDistance(parent, node);
+    const isAdjacentToHead = Math.floor(distance) <= 1; // floor in diags.
+    if (!isAdjacentToHead) {
+      // Move node in x-direction.
+      let newTailX = node.getX();
+      let newTailY = node.getY();
+      if (node.getX() < parent.getX()) {
+        newTailX++;
+      } else if (node.getX() > parent.getX()) {
+        newTailX--;
       }
 
-      // Update visit history.
-      this.tailVisits.add(getCoordinatesJson(this.tailPos));
-
-      // Update the grid's furthest edge trackers.
-      this.updateEdgeDistances(this.headPos, this.tailPos);
-
-      // TODO(me): remove
-      if (DEBUG_MODE) this.print();
+      // Move node in y-direction.
+      if (node.getY() < parent.getY()) {
+        newTailY++;
+      } else if (node.getY() > parent.getY()) {
+        newTailY--;
+      }
+      node.set(newTailX, newTailY);
     }
+
+    // Update visit history.
+    visits.add(getCoordinatesJson(node));
+
+    // Update the grid's furthest edge trackers.
+    this.updateEdgeDistances(parent, node);
+
+    // TODO(me): remove
+    if (DEBUG_MODE) this.print();
   }
 
   /**
    * @description Updates the current recorded furthest edge distances based
    * on the given positions.
-   * @param currentHead The current head position.
-   * @param currentTail The current tail position.
+   * @param currentHead The head node's position.
+   * @param currentTail The tail node's position.
    */
   updateEdgeDistances(
     currentHead: Coordinates,
     currentTail: Coordinates
   ): void {
-    const currentMinX = Math.min(currentHead.getX(), currentTail.getX());
-    const currentMaxX = Math.max(currentHead.getX(), currentTail.getX());
-    const currentMinY = Math.min(currentHead.getY(), currentTail.getY());
-    const currentMaxY = Math.max(currentHead.getY(), currentTail.getY());
+    const currentMinX = Math.min(
+      currentHead.getX(),
+      currentTail.getX()
+    );
+    const currentMaxX = Math.max(
+      currentHead.getX(),
+      currentTail.getX()
+    );
+    const currentMinY = Math.min(
+      currentHead.getY(),
+      currentTail.getY()
+    );
+    const currentMaxY = Math.max(
+      currentHead.getY(),
+      currentTail.getY()
+    );
     if (currentMaxX > this.xMax) {
       this.xMax = currentMaxX;
     }
@@ -290,15 +339,24 @@ class ExpandingTerrain {
     }
   }
 
-  /** @description Getter for the set of tail visits. */
-  getTailVisits(): Set<string> {
-    return this.tailVisits;
+  /** @description Getter for the set of set of non-head node visits. */
+  getNodeVisitsSetList(): Set<string>[] {
+    return this.visits;
   }
 
   /**
-   * @description Prints the current state of the Terrain.
+   * @description Prints the current state of the moving rope.
    */
   print(): void {
+    // Map of coordinate hashes to their coordinate numbers.
+    const midSectionCoordinateNumberMap = new Map<string, number>();
+    for (let i = 1; i < this.rope.length - 2; i++) {
+      midSectionCoordinateNumberMap.set(
+        getCoordinatesJson(this.rope[i]),
+        i
+      );
+    }
+
     // Since we're logging top-down, we'll go backwards in the y-direction
     // while we go forwards (left-to-right) in the x-direction.
     console.log('\n');
@@ -306,15 +364,25 @@ class ExpandingTerrain {
       const lineBuffer: string[] = [];
       for (let x = this.xMin; x <= this.xMax; x++) {
         const currentCoord = new Coordinates(x, y);
+        const currentCoordKey = getCoordinatesJson(currentCoord);
         let char = '.';
-        if (currentCoord.equals(this.headPos)) {
+        if (currentCoord.equals(this.head)) {
           char = 'H';
-        } else if (currentCoord.equals(this.tailPos)) {
+        } else if (currentCoord.equals(this.tail)) {
           char = 'T';
+        } else if (
+          midSectionCoordinateNumberMap.size > 0 &&
+          midSectionCoordinateNumberMap.has(currentCoordKey)
+        ) {
+          // For non-head and non-tail nodes.
+          char = midSectionCoordinateNumberMap
+            .get(currentCoordKey)!
+            .toString();
         } else if (currentCoord.equals(START_POS)) {
           char = 's';
         } else if (
-          this.tailVisits.has(getCoordinatesJson(currentCoord))
+          // For tail node visit history only.
+          this.visits[this.rope.length - 1].has(currentCoordKey)
         ) {
           char = '#';
         }
@@ -331,13 +399,17 @@ class ExpandingTerrain {
  */
 export class ElfRopeBridge implements SolutionClass {
   readonly numOfParts: number = 2;
-  run: RunnerFunction = RunnerFunctionFactory.build(this, this.part1);
+  run: RunnerFunction = RunnerFunctionFactory.build(
+    this,
+    this.part1,
+    this.part2
+  );
 
   /** @description Holds the input move list representation. */
   private moveList: Vector[] = [];
 
-  /** @description The terrain tracker. */
-  private terrain: ExpandingTerrain = new ExpandingTerrain();
+  /** @description The moving rope tracker. */
+  private movingRope: MovingRope = new MovingRope(1);
 
   /** @ctor */
   constructor() {
@@ -380,25 +452,49 @@ export class ElfRopeBridge implements SolutionClass {
    * @description Implementation for part 1.
    */
   private part1(): void {
+    // Ensure we start with a rope of node count 2 (includes head).
+    this.movingRope = new MovingRope(1); // Use 1 for only 1 non-head node.
+
     // TODO(me): remove
     if (DEBUG_MODE) {
       console.log('Starting State:');
-      this.terrain.print();
-      console.log(this.terrain.getTailVisits());
+      this.movingRope.print();
+      console.log(this.movingRope.getNodeVisitsSetList()[0]);
     }
 
     // Play through the move list.
     this.moveList.forEach((vector: Vector) => {
-      this.terrain.moveHead(vector);
+      this.movingRope.moveHead(vector);
     });
 
     console.log(
       `Total number of tail-visited positions:\n${
-        this.terrain.getTailVisits().size
+        this.movingRope.getNodeVisitsSetList()[0].size
       }`
     );
 
     // TODO(me): remove
-    if (DEBUG_MODE) console.log(this.terrain.getTailVisits());
+    if (DEBUG_MODE)
+      console.log(this.movingRope.getNodeVisitsSetList()[0]);
+  }
+
+  /**
+   * @description Implementation for part 2.
+   */
+  private part2(): void {
+    // Ensure we start with a rope of node count 10 (includes head).
+    this.movingRope = new MovingRope(9); // Use 9 for the 9 non-head nodes.
+
+    // Play through the move list.
+    this.moveList.forEach((vector: Vector) => {
+      this.movingRope.moveHead(vector);
+    });
+
+    const visitSets = this.movingRope.getNodeVisitsSetList();
+    console.log(
+      `Total number of tail-visited positions:\n${
+        visitSets[visitSets.length - 1].size
+      }`
+    );
   }
 }
