@@ -16,8 +16,10 @@ import { ElfTuningTrouble } from './2022/Dec06/dec-06';
 import { ElfNoSpaceOnDevice } from './2022/Dec07/dec-07';
 import { ElfTreeTopTreeHouse } from './2022/Dec08/dec-08';
 import { ElfRopeBridge } from './2022/Dec09/dec-09';
+import { ElfCathodeRayTube } from './2022/Dec10/dec-10';
 
 const SOLUTION_MAP = new Map<string, SolutionClass>()
+  .set('2022-12-10', new ElfCathodeRayTube())
   .set('2022-12-09', new ElfRopeBridge())
   .set('2022-12-08', new ElfTreeTopTreeHouse())
   .set('2022-12-07', new ElfNoSpaceOnDevice())
